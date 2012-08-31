@@ -2,9 +2,9 @@
 #r "UIAutomationClient"
 
 #load "Query.fs"
-open UIQuery.Query
+open UIAQuery.Query
 open System.Windows.Automation
 
 #time
-let y = Query AutomationElement.RootElement ">.Window #is_done"
+let y = Query AutomationElement.RootElement ">.Window[Name=ToDo List] #is_done"
 #time
