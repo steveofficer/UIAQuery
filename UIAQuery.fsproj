@@ -32,6 +32,7 @@
     <DocumentationFile>bin\Release\UIAQuery.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core" />
     <Reference Include="System" />
@@ -41,6 +42,7 @@
     <Reference Include="UIAutomationTypes" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src\TypeMap.fs" />
     <Compile Include="src\Query.fs" />
     <Compile Include="src\Extensions.fs" />
     <None Include="src\Script.fsx" />
