@@ -5,6 +5,24 @@ A query processor that allows for jQuery like selectors for extracting Automatio
 
 Query Syntax
 ------------
+#### Select by Class #####
+ Class selectors start with *.*
+ To select elements where the ClassName property is 'list_item': 
+       
+       var list_items = parent_control.Query(".list_item");
+
+#### Select by AutomationId #####
+ AutomationId selectors start with *#*
+ To select elements where the AutomationId is 'focused': 
+       
+       var focused = parent_control.Query("#focused");
+
+#### Select by ControlType ####
+ Queries that are neither by AutomationId nor by Class are treated as ControlType queries.
+ To select Buttons: 
+       
+       var buttons = parent_control.Query("Button");
+       
 #### Query Scope ####
  Adding *>* to the start of a query scopes it to only the immediate children of the parent control. Without it, queries are scoped to all descendants of the parent control.
 * ##### Direct Children Example: #####
@@ -15,17 +33,3 @@ Query Syntax
        
         var descendant_checkboxes = parent_control.Query("CheckBox");
        
-#### Select by Class #####
- To select any children where the ClassName property is 'list_item': 
-       
-       parent_control.Query(">.list_item")
-
-#### Select by AutomationId #####
- To select any descendants where the AutomationId is 'focussed': 
-       
-       parent_control.Query("#focussed")
-
-#### Select by ControlType ####
- To select any Buttons that are children of descendants where the ClassName is 'button_container': 
-       
-       parent_control.Query(".button_container >Button")
