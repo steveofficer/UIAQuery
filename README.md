@@ -1,22 +1,22 @@
 UIAQuery
 ========
 
-A query processor that allows for JQuery like selectors for extracting AutomationElements from the .NET UI Automation library
+A query processor that allows for jQuery like selectors for extracting AutomationElements from the .NET UI Automation library
 
 Examples
 --------
 
 #### Select by Class #####
- To select all the children that have a ClassName property of 'list_item' then you would use: 
+ To select any children where the ClassName property is 'list_item': 
        
        parent_control.Query(">.list_item")
 
 #### Select by AutomationId #####
- To select any descendants that have an AutomationId property of 'focussed' then you would use: 
+ To select any descendants where the AutomationId is 'focussed': 
        
        parent_control.Query("#focussed")
 
 #### Select by ControlType ####
- To select any buttons that are children of descendants with a ClassName of 'button_container' then you would use: 
+ To select any Buttons that are children of descendants where the ClassName is 'button_container': 
        
        parent_control.Query(".button_container >Button")
