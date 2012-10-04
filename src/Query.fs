@@ -5,92 +5,56 @@ module Query =
     open System.Windows.Automation
     open System.Linq
     open TypeMap
+    open System.Text.RegularExpressions
 
-    /// Active pattern for determining if the scope of the expression is Descendants or Children
-    let (|DescendantExpression|ChildExpression|) (expression : string) =
-        if expression.[0] = '>'
-        then ChildExpression (expression.Substring(1))
-        else DescendantExpression expression
-
-    /// Active pattern to determine if the expression is selecting elements based on class, id or control type
-    let (|ClassExpression|IdExpression|ControlExpression|) (expression : string) = 
-        let first = expression.[0]
-        match first with
+    // Active pattern to determine if the expression is selecting elements based on class, id or control type
+    let (|ClassExpression|IdExpression|ControlTypeExpression|) (expression : string) = 
+        match expression.[0] with
             | '#' -> IdExpression(expression.Substring(1))
             | '.' -> ClassExpression(expression.Substring(1))
-            | _ -> ControlExpression(expression)
-    
-    /// Splits an expression containing multiple named properties into a list
-    let split_named_properties (properties : string) = 
-        properties.Split([|';'|]) 
-        |> Array.map (fun s -> s.Trim()) 
-        |> Array.toList
+            | _ -> ControlTypeExpression(expression |> as_control_type)
 
-    let extract_expressions (query : string) = 
-        let to_pair (m : System.Text.RegularExpressions.Match) =
-            let initial = m.Groups.["initial"].Value
-            let secondary_group = m.Groups.["secondary"]
-            if secondary_group.Success
-            then (initial, Some(secondary_group.Value))
-            else (initial, None)
+    let parse (query : string) = 
+        let ``parse property`` (name_value_pair : string) = 
+            let matches = Regex.Match(name_value_pair, "^(?<name>.*)=(?<value>.*)$")
+            let name = matches.Groups.["name"].Value
+            let value = matches.Groups.["value"].Value
+            as_condition name value
 
-        // match specified alphanumerics followed by optional [] enclosing anything
-        // each match is a "query expression"
-        let regex_matches = System.Text.RegularExpressions.Regex.Matches(query, "(?<initial>[\.#>A-Za-z0-9_]+)(\[(?<secondary>.*)\])?")
-        [| for m in regex_matches -> to_pair m |]
+        let (++) (primary_condition : Condition) (additional_conditions : Condition list) = 
+            match additional_conditions with
+                | [] -> primary_condition
+                | conditions -> 
+                    let all_conditions = primary_condition::conditions |> List.toArray
+                    AndCondition(all_conditions) :> Condition
 
-    /// Returns the Condition for the shorthand expression (.class_name, #identifier, or ControlName)
-    let parse_shorthand_condition =
-        function
-            | ClassExpression class_name -> as_condition "ClassName" class_name
-            | IdExpression identifier -> as_condition "AutomationId" identifier
-            | ControlExpression control_type -> as_condition "ControlType" (control_type |> as_control_type)
-        
-    /// Returns a Condition for the named property expression (PropertyName=value)
-    let parse_named_property (expression : string) = 
-        let matches = System.Text.RegularExpressions.Regex.Match(expression, "^(?<name>.*)=(?<value>.*)$")
-        let name = matches.Groups.["name"].Value
-        let value = matches.Groups.["value"].Value
-        as_condition name value
+        let ``create condition`` (scope : string) (primary : string) (additional : string) =
+            let tree_scope = match scope with
+                                | ">" -> TreeScope.Children
+                                | _ -> TreeScope.Descendants
+            let primary_condition = match primary with
+                                    | ClassExpression class_name -> as_condition "ClassName" class_name
+                                    | IdExpression identifier -> as_condition "AutomationId" identifier
+                                    | ControlTypeExpression control_type -> as_condition "ControlType" control_type
+            let additional_conditions = if System.String.IsNullOrEmpty(additional)
+                                        then []
+                                        else [ for property in additional.Split([|';'|]) -> property.Trim() |> ``parse property`` ]
+            let condition = primary_condition ++ additional_conditions
+            (tree_scope, condition)
 
-    let query_condition (initial_condition : string, secondary_conditions : string option) = 
-        // Work out what the scope of the expression is (Child or Descendant)
-        let scope, primary_expression = 
-            match initial_condition with
-                | DescendantExpression expression -> TreeScope.Descendants, expression
-                | ChildExpression expression -> TreeScope.Children, expression
-        
-        // determine if there are any secondary conditions
-        let secondary_conditions = 
-            match secondary_conditions with
-                | Some properties -> 
-                    properties 
-                    |> split_named_properties
-                    |> List.map parse_named_property
-                | None -> []
-        
-        // Parse the conditions and put them all into a single list
-        let conditions = (parse_shorthand_condition primary_expression)::secondary_conditions
-        
-        (scope, conditions)
-
-    /// Matches the conditions against each control in parent_controls and returns all of the matched elements
-    let execute_query (parent_controls : AutomationElement list) (scope, conditions) = 
-        let condition = 
-            match conditions with
-                | [condition] -> condition
-                | _ -> AndCondition(conditions |> List.toArray) :> Condition
-        
-        parent_controls
-        |> List.map (fun control -> control.FindAll(scope, condition) |> as_list)
-        |> List.concat
+        // An optional '>' to denote child scope
+        // Followed by a sequence of specified characters
+        // Optionally followed by additional characters enclosed within []
+        let query_pattern = "(?<child_scope>[>]?)(?<primary>[\.#a-zA-Z0-9_]+)(\[(?<additional>.*)\])?"
+        let regex_matches = Regex.Matches(query, query_pattern)
+        [| for m in regex_matches -> ``create condition`` m.Groups.["child_scope"].Value m.Groups.["primary"].Value m.Groups.["additional"].Value |]
 
     [<System.Runtime.CompilerServices.Extension>]
-    let Query (parent : AutomationElement) (query : string) =
-        // Extract each sub-query and then transform each sub-query into a condition
-        let query_conditions = 
-            extract_expressions query 
-            |> Array.map query_condition
+    let Query (parent : AutomationElement) (query : string) = 
+        let ``find matching controls`` (parents : AutomationElement list) (scope : TreeScope, condition : Condition) = 
+            parents |> List.collect (fun parent -> parent.FindAll(scope, condition) |> to_list)
+
+        let ``execute query`` (conditions : (TreeScope * Condition)[]) = 
+            Array.fold ``find matching controls`` [parent] conditions |> List.toArray
         
-        // Execute each condition against the result of the previous condition, starting with parent
-        Array.fold execute_query [parent] query_conditions |> List.toArray
+        parse query |> ``execute query``

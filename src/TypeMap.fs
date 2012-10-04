@@ -31,7 +31,7 @@
 
     /// Transform an AutomationElementCollection into an AutomationElement list
     /// If collection is null or empty then [] is returned
-    let as_list (collection : AutomationElementCollection) =
+    let to_list (collection : AutomationElementCollection) =
         if collection = null || collection.Count = 0
         then []
         else [ for item in collection -> item ]
