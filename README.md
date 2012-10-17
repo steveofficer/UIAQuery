@@ -5,6 +5,8 @@ A wrapper around the .NET UI Automation library that allows you to query element
 
 Query Syntax
 ------------
+In the examples "parent_control" has the type "AutomationElement".
+
 #### Select by Class #####
  Class selectors start with *.*
  To select elements where the ClassName property is 'list_item': 
