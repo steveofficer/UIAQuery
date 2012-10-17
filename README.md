@@ -1,7 +1,7 @@
 UIAQuery
 ========
 
-A query processor that allows for jQuery like selectors for extracting AutomationElements from the .NET UI Automation library
+A wrapper around the .NET UI Automation library that allows you to query elements using syntax similar to jQuery\CSS selectors.
 
 Query Syntax
 ------------
